@@ -1,87 +1,44 @@
-juliaShaderCode = [[
-    extern number hue;
-    extern number saturation;
-    extern number value;
-    extern number zoom;
-    extern number moveX;
-    extern number moveY; 
-    extern number maxIterations;
-    extern number realConst;
-    extern number imagConst;
-
-    vec3 rgb2hsv(vec3 c)
-    {
-        vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-        vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
-        vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
-
-        float d = q.x - min(q.w, q.y);
-        float e = 1.0e-10;
-        return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-    }
-    
-    vec3 hsv2rgb(vec3 c)
-    {
-        vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-        vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-        return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-    }
-
-    vec4 effect( vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords )
-    {
-        vec4 texcolor = Texel(texture, texture_coords);
-        float newRe = 1.5 * (screen_coords.x - love_ScreenSize.x/2) / (0.5 * zoom * love_ScreenSize.x) + moveX;
-        float newIm = (screen_coords.y - love_ScreenSize.y/2) / (0.5 * zoom * love_ScreenSize.y) + moveY;
-        float oldRe;
-        float oldIm;
-        float z;
-        float i;
-        float smooth = 0;
-        for(i=0; i<maxIterations; i++) {
-            oldRe = newRe;
-            oldIm = newIm;
-
-            newRe = oldRe * oldRe - oldIm * oldIm + realConst;
-            newIm = 2 * oldRe * oldIm + imagConst;
-            
-            z = newRe * newRe + newIm * newIm;
-            smooth = smooth + exp(-abs(z));
-            if (z > 4) {
-                break;
-            }
-        }
-        smooth = smooth / maxIterations;
-        vec3 hsv = vec3(hue + smooth/5, saturation - smooth/10, i < maxIterations ? value : 0);
-        vec3 rgb = hsv2rgb(hsv);
-        return vec4(rgb.r, rgb.g, rgb.b, smooth*50);
-    }
-]]
-
 function love.load()
+    math.randomseed(os.time())
     paused = false
     zoom = 1
     moveX = 0
     moveY = 0
-    maxIterations = 1000
+    maxIterations = 250
     realConst = -0.7
     imagConst = 0.2
-    hue = 200
+    circleRadius = 2
+    hue = 200 + math.random(-100, 100)
     saturation = 100
     value = 100
 
-    juliaShader = love.graphics.newShader(juliaShaderCode)
+    automode = false
+    autoangle = 0
+
+    love.graphics.setFont(love.graphics.newFont(18))
+
+    juliaShader = love.graphics.newShader("julia.shader")
     juliaShader:send("moveX", moveX) 
     juliaShader:send("moveY", moveY) 
     juliaShader:send("zoom", zoom) 
     juliaShader:send("maxIterations", maxIterations) 
     juliaShader:send("realConst", realConst) 
     juliaShader:send("imagConst", imagConst) 
+    juliaShader:send("circleRadius", circleRadius)
     juliaShader:send("hue", hue/360)
     juliaShader:send("saturation", saturation/100)
     juliaShader:send("value", value/100)
 end
 
 function love.update(dt)
+    if automode then
+        autoangle = autoangle + 0.005 * love.timer.getDelta() 
+        local length = math.cos(autoangle*1.5)*math.sin(autoangle*2)
+        realConst = math.cos(autoangle)*length
+        imagConst = math.sin(autoangle)*length
+        juliaShader:send("realConst", realConst) 
+        juliaShader:send("imagConst", imagConst) 
+   end
 end
 
 function sign(x)
@@ -108,25 +65,101 @@ function love.mousemoved(x, y, dx, dy)
     if love.mouse.isDown(2) then
         moveX, moveY = moveX - dx, moveY - dy
 
-
         juliaShader:send("moveX", moveX/700/zoom)
         juliaShader:send("moveY", moveY/700/zoom)
-    elseif not paused then
-        realConst = x / love.graphics.getWidth()
-        imagConst = y / love.graphics.getHeight()
-
+    elseif not paused and not automode then
+        realConst = (love.graphics.getWidth()/2 - x)/love.graphics.getWidth() * -2
+        imagConst = (love.graphics.getHeight()/2 - y)/love.graphics.getHeight() * -2
         juliaShader:send("realConst", realConst) 
         juliaShader:send("imagConst", imagConst) 
     end
 end
 
 function love.keypressed(key, code)
+    love.keyboard.setKeyRepeat(true)
+
     if key == "escape" then
         love.event.quit()
     end
 
     if key == "space" then
         paused = not paused
+    end
+    
+    if key == "-" and love.keyboard.isDown(1) then
+        hue = hue - 1
+        juliaShader:send("hue", hue/360)
+    elseif key == "=" and love.keyboard.isDown(1) then
+        hue = hue + 1
+        juliaShader:send("hue", hue/360)
+    elseif key == "-" and love.keyboard.isDown(2) then
+        saturation = saturation - 1
+        juliaShader:send("saturation", saturation/100)
+    elseif key == "=" and love.keyboard.isDown(2) then
+        saturation = saturation + 1
+        juliaShader:send("saturation", saturation/100)
+    elseif key == "-" and love.keyboard.isDown(3) then
+        value = value - 1
+        juliaShader:send("value", value/100)
+    elseif key == "=" and love.keyboard.isDown(3) then
+        value = value + 1
+        juliaShader:send("value", value/100)
+    elseif key == "-" then
+        zoom = zoom * 0.99
+        juliaShader:send("zoom", zoom)
+    elseif key == "=" then
+        zoom = zoom / 0.99 
+        juliaShader:send("zoom", zoom)
+    end
+
+    if key == "up" then
+        moveY = moveY - 1/love.graphics.getHeight()
+    elseif key == "down" then
+        moveY = moveY + 1/love.graphics.getHeight()
+    end
+
+    if key == "left" then
+        moveX = moveX - 1/love.graphics.getWidth()
+    elseif key == "right" then
+        moveX = moveX + 1/love.graphics.getWidth()
+    end
+
+    if key == "w" then
+        imagConst = imagConst - 0.001 * zoom
+    elseif key == "s" then
+        imagConst = imagConst + 0.001 * zoom
+    end
+
+    if key == "a" then
+        realConst = realConst - 0.001 * zoom
+    elseif key == "d" then
+        realConst = realConst + 0.001 * zoom
+    end
+
+    if key == "w" or key == "a" or key == "s" or key == "d" then
+        juliaShader:send("realConst", realConst)
+        juliaShader:send("imagConst", imagConst)
+    end
+
+    if key == "left" or key == "up" or key == "down" or key == "right" then
+        juliaShader:send("moveX", moveX*2)
+        juliaShader:send("moveY", moveY*2)
+    end
+
+    if key == "j" then
+        circleRadius = circleRadius - 0.05
+    end
+
+    if key == "k" then
+        circleRadius = circleRadius + 0.05
+    end
+
+    if key == "j" or key == "k" then
+        juliaShader:send("circleRadius", circleRadius)
+    end
+
+    if key == "b" then
+        automode = not automode
     end
 end
 
@@ -136,6 +169,8 @@ function love.draw()
     love.graphics.setShader(juliaShader)
     love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
     love.graphics.setShader()
-    love.graphics.print(hue .. ", " .. saturation .. ", " .. value)
-    love.graphics.print(moveX .. ", " .. moveY, 0, 10)
+    love.graphics.print("c = " .. realConst .. " + " .. imagConst .. "i") 
+    love.graphics.print(hue .. ", " .. saturation .. ", " .. value, 0, 20)
+    love.graphics.print(moveX .. ", " .. moveY, 0, 40)
+    love.graphics.print(circleRadius, 0, 60)
 end
