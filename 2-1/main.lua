@@ -9,16 +9,16 @@ zoom = 1
 zoomVel = 0
 translateX = 0
 translateY = 0
-maxIterations = 512
+maxIterations = 256
 realConst = 0
 imagConst = 0
 circleRadius = 2
 supersampling = 1
 
 -- Color of fractal
-hue = 200 + love.math.random(-100, 100)
-saturation = 80
-value = 100
+hue = 180
+saturation = 70
+value = 90
 
 function love.load()
     love.graphics.setFont(love.graphics.newFont(18))
@@ -29,8 +29,14 @@ function love.load()
 end
 
 function love.update(dt)
+    dt = math.min(1/30, dt)
     zoomVel = zoomVel * 0.95
+    if math.abs(zoomVel) < 0.1 then
+        zoomVel = 0
+    end
     zoom = zoom + zoomVel * dt
+
+    zoom = math.max(zoom, 0.25)
 
     juliaShader:send("translateX", translateX) 
     juliaShader:send("translateY", translateY) 
@@ -46,13 +52,17 @@ function love.update(dt)
 end
 
 function love.wheelmoved(x, y)
-    zoomVel = zoomVel + sign(y)/10 * zoom
+    zoomVel = zoomVel + sign(y)/5 * zoom
+
+    if math.abs(zoomVel) > 3 * zoom then
+        zoomVel = 3 * sign(zoomVel) * zoom
+    end
 end
 
 function love.mousemoved(x, y, dx, dy)
     if love.mouse.isDown(2) then
-        translateX = translateX - dx/love.graphics.getWidth()/zoom
-        translateY = translateY - dy/love.graphics.getHeight()/zoom
+        translateX = translateX - dx/love.graphics.getWidth()/zoom * 2
+        translateY = translateY - dy/love.graphics.getHeight()/zoom * 2
     elseif not paused then
         realConst = (love.graphics.getWidth()/2 - x)/love.graphics.getWidth() * -2
         imagConst = (love.graphics.getHeight()/2 - y)/love.graphics.getHeight() * -2
@@ -67,6 +77,8 @@ function love.keypressed(key, code)
     elseif key == "-" then
         supersampling = supersampling - 1
     end
+
+    supersampling = math.max(1, math.min(8, supersampling))
 
     if key == "escape" then
         love.event.quit()
@@ -117,9 +129,9 @@ function love.draw()
     love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
     love.graphics.setShader()
     camera:detach()
-    love.graphics.print("c = " .. realConst .. " + " .. imagConst .. "i") 
-    love.graphics.print(hue .. ", " .. saturation .. ", " .. value, 0, 20)
-    love.graphics.print(translateX .. ", " .. translateY, 0, 40)
-    love.graphics.print("zoom: " .. math.floor(zoom*100)/100, 0, 60)
-    love.graphics.print("ssaa: " .. supersampling, 0, 80)
+    love.graphics.print("c = " .. realConst .. " + " .. imagConst .. "i", 5, 5)
+    love.graphics.print(hue .. ", " .. saturation .. ", " .. value, 5, 25)
+    love.graphics.print(translateX .. ", " .. translateY, 5, 45)
+    love.graphics.print("zoom: " .. math.floor(zoom*100)/100, 5, 65)
+    love.graphics.print("ssaa: " .. supersampling, 5, 85)
 end
