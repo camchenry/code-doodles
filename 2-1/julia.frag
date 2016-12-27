@@ -20,8 +20,8 @@ vec3 rgb2hsv(vec3 c)
     vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
     vec4 q = c.r < p.x ? vec4(p.xyw, c.r) : vec4(c.r, p.yzx);
 
-    float d = q.x - min(q.w, q.y);
-    float e = 1.0e-10;
+    number d = q.x - min(q.w, q.y);
+    number e = 1.0e-10;
     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
@@ -39,24 +39,24 @@ vec3 hsv2rgb(vec3 c)
 // Returns: vec2 data
 // x: is in set? (0 or 1)
 // y: smoothing value (for color gradient)
-vec2 fractal_julia(float re, float im, int iterations) {
+vec2 fractal_julia(number re, number im, int iterations) {
     // complex point to test
-    float real = re;
-    float imag = im;
-    float oldReal;
-    float oldImag;
+    number real = re;
+    number imag = im;
+    number oldReal;
+    number oldImag;
 
-    float limit = circleRadius * circleRadius;
+    number limit = number(circleRadius * circleRadius);
 
     // Smoothing value for color gradient
     // Ranges from 0 to 1, where 0 = no iterations, 1 = max iterations
-    float smoothing = 0;
+    number smoothing = 0;
 
     // point is in julia set or not?
     bool isInJuliaSet = false;
 
     // number of iterations completed
-    float i;
+    number i;
 
     for(i = 0; i < iterations; i++) {
         oldReal = real;
@@ -67,7 +67,7 @@ vec2 fractal_julia(float re, float im, int iterations) {
         
         // Check if point lies in circle
         // If it does not, then it is not in the julia set
-        float z = (real * real) + (imag * imag);
+        number z = (real * real) + (imag * imag);
         smoothing = smoothing + exp(-abs(z));
         if (z > limit) {
             isInJuliaSet = true;
@@ -85,24 +85,24 @@ vec2 fractal_julia(float re, float im, int iterations) {
 // Returns: vec2 data
 // x: is in set? (0 or 1)
 // y: smoothing value (for color gradient)
-vec2 fractal_mandelbrot(float re, float im, int iterations) {
+vec2 fractal_mandelbrot(number re, number im, int iterations) {
     // complex point to test
-    float real = re;
-    float imag = im;
-    float oldReal;
-    float oldImag;
+    number real = re;
+    number imag = im;
+    number oldReal;
+    number oldImag;
 
-    float limit = circleRadius * circleRadius;
+    number limit = number(circleRadius * circleRadius);
 
     // Smoothing value for color gradient
     // Ranges from 0 to 1, where 0 = no iterations, 1 = max iterations
-    float smoothing = 0;
+    number smoothing = 0;
 
     // point is in mandelbrot set or not?
     bool isInSet = false;
 
     // number of iterations completed
-    float i;
+    number i;
 
     for(i = 0; i < iterations; i++) {
         oldReal = real;
@@ -113,7 +113,7 @@ vec2 fractal_mandelbrot(float re, float im, int iterations) {
         
         // Check if point lies in circle
         // If it does not, then it is not in the mandelbrot set
-        float z = (real * real) + (imag * imag);
+        number z = (real * real) + (imag * imag);
         if (z > limit) {
             smoothing = i + 1 - log(log(abs(z)))/log(2.0);
             isInSet = true;
@@ -126,7 +126,7 @@ vec2 fractal_mandelbrot(float re, float im, int iterations) {
 
 vec4 fractal_color_point(vec2 point_data) {
     bool inSet = point_data.x == 1;
-    float smoothing = point_data.y;
+    number smoothing = point_data.y;
 
     vec3 hsv = vec3(hue + smoothing/4, saturation, inSet ? value : 0);
     vec3 rgb = hsv2rgb(hsv);
@@ -136,17 +136,17 @@ vec4 fractal_color_point(vec2 point_data) {
 
 vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
 {
-    float width = love_ScreenSize.x;
-    float height = love_ScreenSize.y;
-    float x = 1.5 * (screen_coords.x - width/2) / (0.5 * zoom * width) + translateX;
-    float y = (screen_coords.y - height/2) / (0.5 * zoom * height) + translateY;
+    number width = love_ScreenSize.x;
+    number height = love_ScreenSize.y;
+    number x = 1.5 * (screen_coords.x - width/2) / (0.5 * zoom * width) + translateX;
+    number y = (screen_coords.y - height/2) / (0.5 * zoom * height) + translateY;
 
     vec4 pixel_color = vec4(0, 0, 0, 0);
 
     for (int v = 0; v < supersampling; ++v) {
         for (int u = 0; u < supersampling; ++u) {
-            float fx = x + float(u) / float(supersampling) / width / zoom;
-            float fy = y + float(v) / float(supersampling) / height / zoom;
+            number fx = x + number(u) / number(supersampling) / width / zoom;
+            number fy = y + number(v) / number(supersampling) / height / zoom;
             vec4 color;
 
             if (mode == JULIA) {
@@ -159,7 +159,7 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 screen_coords)
         }
     }
 
-    pixel_color /= (float(supersampling) * float(supersampling));
+    pixel_color /= (number(supersampling) * number(supersampling));
 
     return pixel_color;
 }

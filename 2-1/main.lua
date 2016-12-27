@@ -88,30 +88,49 @@ function love.update(dt)
         saturation = math.sin(timer) * 10 + 80
     end
 
+
+    local major, minor, revision = love.getVersion()
+
     if mode == "julia" then
         juliaShader:send("translateX", translateX) 
         juliaShader:send("translateY", translateY) 
         juliaShader:send("zoom", zoom) 
-        juliaShader:send("maxIterations", maxIterations) 
-        juliaShader:send("supersampling", supersampling) 
         juliaShader:send("realConst", realConst) 
         juliaShader:send("imagConst", imagConst) 
-        juliaShader:send("circleRadius", circleRadius)
         juliaShader:send("hue", hue/360)
         juliaShader:send("saturation", saturation/100)
         juliaShader:send("value", value/100)
-        juliaShader:send("mode", 1)
+        juliaShader:send("circleRadius", circleRadius)
+
+        -- Targets 0+.10+.2+
+        if major > 0 or (major == 0 and minor > 10) or (major == 0 and minor == 10 and revision >= 2) then
+            juliaShader:send("maxIterations", maxIterations) 
+            juliaShader:send("supersampling", supersampling) 
+            juliaShader:send("mode", 1)
+        else
+            juliaShader:sendInt("maxIterations", maxIterations) 
+            juliaShader:sendInt("supersampling", supersampling) 
+            juliaShader:sendInt("mode", 1)
+        end
     elseif mode == "mandelbrot" then
         juliaShader:send("translateX", translateX) 
         juliaShader:send("translateY", translateY) 
         juliaShader:send("zoom", zoom) 
-        juliaShader:send("maxIterations", maxIterations) 
-        juliaShader:send("supersampling", supersampling) 
-        juliaShader:send("circleRadius", circleRadius)
         juliaShader:send("hue", hue/360)
         juliaShader:send("saturation", saturation/100)
         juliaShader:send("value", value/100)
-        juliaShader:send("mode", 2)
+        juliaShader:send("circleRadius", circleRadius)
+
+        -- Targets 0+.10+.2+
+        if major > 0 or (major == 0 and minor > 10) or (major == 0 and minor == 10 and revision >= 2) then
+            juliaShader:send("maxIterations", maxIterations) 
+            juliaShader:send("supersampling", supersampling) 
+            juliaShader:send("mode", 2)
+        else
+            juliaShader:sendInt("maxIterations", maxIterations) 
+            juliaShader:sendInt("supersampling", supersampling) 
+            juliaShader:sendInt("mode", 2)
+        end
     end
 end
 
@@ -203,14 +222,6 @@ function love.keypressed(key, code)
         realConst = realConst - 0.001 / zoom
     elseif key == "d" then
         realConst = realConst + 0.001 / zoom
-    end
-
-    if key == "j" then
-        circleRadius = circleRadius - 0.05
-    end
-
-    if key == "k" then
-        circleRadius = circleRadius + 0.05
     end
 
     if key == "e" then
