@@ -18,7 +18,7 @@ timer = 0
 count = 1
 maxCount = lifespan * forcesPerSecond
 maxForce = 600
-mutationRate = 0.01
+mutationRate = 0
 
 target = Vector(WIDTH/2, 50)
 
@@ -93,6 +93,10 @@ function Rocket:calculateFitness()
 
     if self.completed then
         self.fitness = self.fitness * 10
+    end
+
+    if self.fitness > 1000000 then
+        self.fitness = 1000000
     end
 end
 
